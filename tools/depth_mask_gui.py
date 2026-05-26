@@ -3,27 +3,20 @@ import importlib.util
 import json
 import os
 import sys
-
 import numpy as np
+import cv2
 
-try:
-    import cv2
-except ImportError:
-    cv2 = None
-
-
+# 导入相机内外参数 在colmap_loader.py
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 COLMAP_LOADER_PATH = os.path.join(REPO_ROOT, "scene", "colmap_loader.py")
 
-# Load only COLMAP helpers from this repo. Importing "scene.colmap_loader"
-# would execute scene/__init__.py and require the full torch environment.
 spec = importlib.util.spec_from_file_location("colmap_loader_local", COLMAP_LOADER_PATH)
 colmap_loader = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(colmap_loader)
 
 
 def read_colmap(source_path):
-    """读取COLMAP稀疏相机内参数/外参数 from source_path/sparse/0."""
+    # 读取COLMAP稀疏相机内参数/外参数  source_path/sparse/0.
     sparse_dir = os.path.join(source_path, "sparse", "0")
     try:
         images = colmap_loader.read_extrinsics_binary(os.path.join(sparse_dir, "images.bin"))
@@ -35,7 +28,7 @@ def read_colmap(source_path):
 
 
 def pinhole_params(camera):
-    """COLMAP相机模型转换为 fx, fy, cx, cy."""
+    # COLMAP相机模型转换为 fx, fy, cx, cy
     if camera.model == "SIMPLE_PINHOLE":
         fx = fy = camera.params[0]
         cx, cy = camera.params[1], camera.params[2]
@@ -47,12 +40,12 @@ def pinhole_params(camera):
 
 
 def select_image_record(colmap_images, image_path, camera_name):
-    """找到与渲染图像相对应的COLMAP图像记录。"""
+    # 找到与渲染图像相对应的COLMAP图像记录。
     records = sorted(colmap_images.values(), key=lambda item: item.name)
     image_base = os.path.basename(image_path)
     stem = os.path.splitext(image_base)[0]
 
-    # 如果用户提供了原始的COLMAP图像名称，则信任该名称.
+    # 如果用户提供了原始的COLMAP图像名称，则信任该名称
     if camera_name:
         for record in records:
             if record.name == camera_name or os.path.splitext(record.name)[0] == camera_name:
@@ -70,13 +63,12 @@ def select_image_record(colmap_images, image_path, camera_name):
             return records[idx]
 
     raise ValueError(
-        "Cannot infer camera from image name. "
-        "Use --camera_name with the original COLMAP image name, for example IMG_0001.jpg."
+        "无法从图像名称读取相机参数"
     )
 
 
 def default_depth_path(image_path):
-    """优先选择渲染文件旁同名NPY深度文件，然后尝试 renders/../depths查找."""
+    # 优先选择渲染文件旁同名NPY深度文件，然后尝试 renders/../depths查找
     same_dir = os.path.splitext(image_path)[0] + ".npy"
     if os.path.exists(same_dir):
         return same_dir
@@ -92,13 +84,13 @@ def default_depth_path(image_path):
 
 
 def load_depth(path):
-    """加载由render.py保存的原始深度数组，数据类型：float32、int64"""
+    # 加载由render.py保存的原始深度数组，数据类型：float32、int64
     depth = np.load(path).astype(np.float64)
     return np.squeeze(depth)
 
 
 def rect_from_points(p0, p1, width, height):
-    """将拖动的起点/终点转换为裁剪后的x0, y0, x1, y1矩形。"""
+    # 将拖动的起点/终点转换为裁剪后的x0, y0, x1, y1矩形
     x0, x1 = sorted((p0[0], p1[0]))
     y0, y1 = sorted((p0[1], p1[1]))
     x0 = int(np.clip(x0, 0, width - 1))
@@ -111,14 +103,14 @@ def rect_from_points(p0, p1, width, height):
 
 
 def depth_to_z(depth_value, depth_mode):
-    """将保存的深度值转换为相机空间中的z值"""
+    # 将保存的深度值转换为相机空间中的z值
     if depth_mode == "inverse":
         return 1.0 / np.maximum(depth_value, 1e-8)
     return depth_value
 
 
 def backproject_bbox(depth, rect, image_record, camera_record, depth_mode, stride):
-    """将2D矩形中的采样像素反投影到世界空间边界框中"""
+    # 将2D矩形中的采样像素反投影到世界空间边界框中
     fx, fy, cx, cy = pinhole_params(camera_record)
     x0, y0, x1, y1 = rect
 
@@ -201,7 +193,7 @@ class App:
         self.result = None
 
     def mouse(self, event, x, y, flags, userdata):
-        """OpenCV鼠标回调：按下，移动，释放."""
+        # OpenCV鼠标：按下，移动，释放
         if event == cv2.EVENT_LBUTTONDOWN:
             self.dragging = True
             self.start = (x, y)
@@ -231,13 +223,13 @@ class App:
                 print(json.dumps(self.result, indent=2))
 
     def save(self):
-        """将最新的边界框（bbox）结果写入JSON格式。"""
+        # 将最新的边界框（bbox）结果写入JSON格式
         os.makedirs(os.path.dirname(os.path.abspath(self.args.output)), exist_ok=True)
         with open(self.args.output, "w", encoding="utf-8") as f:
             json.dump(self.result, f, indent=2)
 
     def draw(self):
-        """绘制图像和当前矩形。"""
+        # 绘制图像和当前矩形
         view = self.image.copy()
         if self.start is not None and self.end is not None:
             rect = rect_from_points(self.start, self.end, view.shape[1], view.shape[0])
@@ -247,13 +239,13 @@ class App:
         return view
 
     def run(self):
-        """OpenCV循环."""
+        # OpenCV循环 按q与
         window = "depth bbox"
         window_flags = cv2.WINDOW_NORMAL
         if hasattr(cv2, "WINDOW_GUI_NORMAL"):
             window_flags |= cv2.WINDOW_GUI_NORMAL
         cv2.namedWindow(window, window_flags)
-        cv2.setMouseCallback(window, self.mouse)  #这里调用mouse可以不传参吗？？？
+        cv2.setMouseCallback(window, self.mouse)  #这里调用mouse不传参，否则报错
         while True:
             cv2.imshow(window, self.draw())
             key = cv2.waitKey(30) & 0xFF
