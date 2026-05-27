@@ -1,6 +1,6 @@
 # Research-on-Local-Repair-of-3DGS-Based-on-Interactive-2D-Mask-and-Pose-Free-Joint-Optimization
 
-这个是我目前正在进行的科研实习项目，如果您愿意了解更多，可以打开我的飞书文档：https://ucng022wzy4e.feishu.cn/docx/ORkYdtR7UoZEdYxoDO7cbTjCn9Q 这里有我做这个项目时的思考与研究过程
+这个是我目前正在进行的科研项目，如果您愿意了解更多，可以打开我的飞书文档：https://ucng022wzy4e.feishu.cn/docx/ORkYdtR7UoZEdYxoDO7cbTjCn9Q 这里有我做这个项目时的思考与研究过程
 
 ## 介绍与初步展示
 
